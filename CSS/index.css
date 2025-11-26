@@ -1,0 +1,358 @@
+/* ---------------------------
+   RESET
+---------------------------- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    font-family: Arial, sans-serif;
+}
+
+/* ---------------------------
+   FOND VANTA
+---------------------------- */
+#vanta-bg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+/* Contenu au-dessus du fond animé */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.6;
+    color: #333;
+    background: transparent;
+}
+
+header,
+main,
+footer {
+    position: relative;
+    z-index: 5;
+}
+
+/* =========================================================
+   BARRE DU HAUT
+========================================================= */
+
+header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+#top-bar {
+    height: 56px;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+
+    width: 100%;
+    margin: 0;
+    padding: 0 1.4rem;
+
+    display: flex;
+    align-items: center;
+
+    /* 🔥 3 blocs : gauche / centre / droite */
+    justify-content: space-between;
+
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+
+
+/* Titre */
+.header-left h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, #5bcffb, #f5a9b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    white-space: nowrap;
+}
+
+.header-right {
+    flex: 0 0 auto;
+    margin-left: 1rem;
+}
+
+/* Bouton de connexion */
+.login-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(245,169,184,0.9);
+    background: linear-gradient(90deg, #5bcffb1f, #f5a9b81f);
+    color: #e56c9b;
+    font-size: 0.85rem;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.login-btn:hover {
+    background: linear-gradient(90deg, #5bcffb3a, #f5a9b83a);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
+}
+
+
+/* NAVIGATION */
+.main-nav {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.9rem;
+}
+
+.main-nav a {
+    text-decoration: none;
+    color: #444;
+    position: relative;
+    padding-bottom: 2px;
+    transition: color 0.2s;
+}
+
+.main-nav a::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 0%;
+    height: 2px;
+    background: linear-gradient(90deg, #5bcffb, #f5a9b8);
+    transition: width 0.25s ease;
+}
+
+.main-nav a:hover {
+    color: #e56c9b;
+}
+
+.main-nav a:hover::after {
+    width: 100%;
+}
+
+/* =========================================================
+   BOUTON FLOTTANT + MENU
+========================================================= */
+
+#floating-menu-btn {
+    position: fixed;
+    top: 8px;
+    left: 10px;
+    z-index: 30;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,0.12);
+    background: rgba(255,255,255,0.96);
+    padding: 4px 12px 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: #555;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+
+    /* 🔥 caché par défaut, montré par la classe .header-compact */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+#floating-menu-btn:hover {
+    background: rgba(255,255,255,1);
+}
+
+/* Menu déroulant */
+#floating-menu {
+    position: fixed;
+    top: 44px;
+    left: 10px;
+    z-index: 30;
+
+    min-width: 160px;
+    padding: 0.4rem 0.2rem;
+
+    background: rgba(255,255,255,0.98);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    border: 1px solid rgba(0,0,0,0.06);
+
+    display: none; /* affiché / masqué en JS */
+}
+
+#floating-menu a {
+    display: block;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.85rem;
+    color: #444;
+    text-decoration: none;
+}
+
+#floating-menu a:hover {
+    background: rgba(245,169,184,0.12);
+    color: #e56c9b;
+}
+
+/* =========================================================
+   ÉTAT COMPACT (appliqué sur <body>)
+========================================================= */
+
+body.header-compact #top-bar {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+body.header-compact #floating-menu-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+main {
+    flex: 1;
+    width: min(900px, 100% - 2.5rem);
+    margin: 2.5rem auto 0 auto;
+}
+
+/* Hero logo */
+.hero-logo {
+    position: relative;
+    width: 100%;
+    height: 260px;
+    margin-bottom: 2rem;
+    border-radius: 20px;
+    overflow: hidden;
+
+    background: linear-gradient(
+        135deg,
+        rgba(91,207,251,0.35),
+        rgba(245,169,184,0.35)
+    );
+
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow:
+        0 0 25px rgba(91,207,251,0.18),
+        0 0 25px rgba(245,169,184,0.18),
+        0 12px 30px rgba(0,0,0,0.10);
+}
+
+.hero-logo::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at bottom, rgba(255,255,255,0.5), transparent 80%);
+    pointer-events: none;
+}
+
+.logo-img {
+    display: block;
+    max-width: 70%;
+    max-height: 80%;
+    margin: 0 auto;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+}
+
+/* Texte */
+h2 {
+    margin-bottom: 1rem;
+    color: #e56c9b;
+    font-size: 1.8rem;
+}
+
+p {
+    margin-bottom: 1rem;
+    font-size: 1.05rem;
+    color: #333;
+}
+
+/* Cartes */
+.card {
+    background: rgba(255,255,255,0.9);
+    border-radius: 20px;
+    padding: 1.6rem;
+    margin-top: 1.5rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+/* FOOTER */
+footer {
+    text-align: center;
+    padding: 1.2rem 0;
+    margin-top: 2rem;
+    background: rgba(255,255,255,0.9);
+    color: #555;
+    border-top: 1px solid rgba(0,0,0,0.04);
+}
+.footer-year {
+    color: #5bcffb;
+}
+
+/* Décalage des ancres pour ne pas passer sous le header */
+section {
+    scroll-margin-top: 70px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 700px) {
+    #top-bar {
+        padding: 0 0.8rem;
+    }
+
+    .header-left h1 {
+        font-size: 1.05rem;
+    }
+
+    .main-nav {
+        gap: 0.7rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 600px) {
+    main {
+        width: 100%;
+        padding: 1.2rem 1rem 0 1rem;
+    }
+
+    .hero-logo {
+        height: 220px;
+    }
+
+    .logo-img {
+        max-width: 80%;
+    }
+
+    h2 {
+        font-size: 1.4rem;
+    }
+
+    p {
+        font-size: 0.95rem;
+    }
+}
