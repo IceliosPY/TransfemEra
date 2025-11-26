@@ -1,5 +1,6 @@
 <?php
 // index.php
+session_start(); // important : doit être tout en haut
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -17,26 +18,29 @@
 
     <!-- BARRE DU HAUT -->
     <header>
-    <div id="top-bar">
-        <!-- Gauche : titre -->
-        <div class="header-left">
-            <h1>Transfem Era</h1>
+        <div id="top-bar">
+            <!-- Gauche : titre -->
+            <div class="header-left">
+                <h1>Transfem Era</h1>
+            </div>
+
+            <!-- Centre : navigation principale -->
+            <nav class="main-nav">
+                <a href="#accueil">Accueil</a>
+                <a href="#valeurs">Nos valeurs</a>
+                <a href="#contact">Nous contacter</a>
+            </nav>
+
+            <!-- Droite : connexion / déconnexion -->
+            <div class="header-right">
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <a href="logout.php" class="login-btn">Se déconnecter</a>
+                <?php else: ?>
+                    <a href="login.php" class="login-btn">Se connecter</a>
+                <?php endif; ?>
+            </div>
         </div>
-
-        <!-- Centre : navigation principale -->
-        <nav class="main-nav">
-            <a href="#accueil">Accueil</a>
-            <a href="#valeurs">Nos valeurs</a>
-            <a href="#contact">Nous contacter</a>
-        </nav>
-
-        <!-- Droite : bouton connexion -->
-        <div class="header-right">
-            <a href="login.php" class="login-btn">Se connecter</a>
-        </div>
-    </div>
-</header>
-
+    </header>
 
     <!-- BOUTON FLOTTANT + MENU (s’affiche quand on scroll) -->
     <button id="floating-menu-btn" aria-expanded="false" aria-haspopup="true">
@@ -85,7 +89,7 @@
         <section id="contact">
             <div class="card">
                 <h2>Nous contacter</h2>
-                <p>Pour plus d'informations, rejoindre un groupe ou participer à une rencontre&nbsp;:</p>
+            <p>Pour plus d'informations, rejoindre un groupe ou participer à une rencontre&nbsp;:</p>
                 <p><strong>Email :</strong> contact@transfem-era.org</p>
                 <p>(Tu pourras modifier l’adresse plus tard.)</p>
             </div>
@@ -128,55 +132,54 @@
             }
         });
 
-// --- LOGIQUE SIMPLE : barre en haut, bouton en scroll ---
-(function () {
-    const body  = document.body;
-    const menu  = document.getElementById("floating-menu");
-    const btn   = document.getElementById("floating-menu-btn");
+        // --- LOGIQUE : barre en haut + bouton flottant en scroll ---
+        (function () {
+            const body  = document.body;
+            const menu  = document.getElementById("floating-menu");
+            const btn   = document.getElementById("floating-menu-btn");
 
-    if (!body || !menu || !btn) return;
+            if (!body || !menu || !btn) return;
 
-    function onScroll() {
-        const scrolled = window.scrollY > 80;   // tu peux mettre 40 si tu veux
-        if (scrolled) {
-            body.classList.add("header-compact");
-        } else {
-            body.classList.remove("header-compact");
-            menu.style.display = "none";
-            btn.setAttribute("aria-expanded", "false");
-        }
-    }
+            function onScroll() {
+                const scrolled = window.scrollY > 80;
+                if (scrolled) {
+                    body.classList.add("header-compact");
+                } else {
+                    body.classList.remove("header-compact");
+                    menu.style.display = "none";
+                    btn.setAttribute("aria-expanded", "false");
+                }
+            }
 
-    onScroll();
-    window.addEventListener("scroll", onScroll);
+            onScroll();
+            window.addEventListener("scroll", onScroll);
 
-    btn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        const isOpen = menu.style.display === "block";
-        if (isOpen) {
-            menu.style.display = "none";
-            btn.setAttribute("aria-expanded", "false");
-        } else {
-            menu.style.display = "block";
-            btn.setAttribute("aria-expanded", "true");
-        }
-    });
+            btn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                const isOpen = menu.style.display === "block";
+                if (isOpen) {
+                    menu.style.display = "none";
+                    btn.setAttribute("aria-expanded", "false");
+                } else {
+                    menu.style.display = "block";
+                    btn.setAttribute("aria-expanded", "true");
+                }
+            });
 
-    document.addEventListener("click", function (e) {
-        if (!menu.contains(e.target) && e.target !== btn) {
-            menu.style.display = "none";
-            btn.setAttribute("aria-expanded", "false");
-        }
-    });
+            document.addEventListener("click", function (e) {
+                if (!menu.contains(e.target) && e.target !== btn) {
+                    menu.style.display = "none";
+                    btn.setAttribute("aria-expanded", "false");
+                }
+            });
 
-    menu.querySelectorAll("a").forEach(link => {
-        link.addEventListener("click", () => {
-            menu.style.display = "none";
-            btn.setAttribute("aria-expanded", "false");
-        });
-    });
-})();
-
+            menu.querySelectorAll("a").forEach(link => {
+                link.addEventListener("click", () => {
+                    menu.style.display = "none";
+                    btn.setAttribute("aria-expanded", "false");
+                });
+            });
+        })();
     </script>
 
 </body>
