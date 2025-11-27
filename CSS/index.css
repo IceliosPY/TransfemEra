@@ -64,14 +64,10 @@ header {
 
     display: flex;
     align-items: center;
-
-    /* 🔥 3 blocs : gauche / centre / droite */
-    justify-content: space-between;
+    justify-content: space-between;   /* gauche / centre / droite */
 
     transition: transform 0.25s ease, opacity 0.25s ease;
 }
-
-
 
 /* Titre */
 .header-left h1 {
@@ -84,12 +80,80 @@ header {
     white-space: nowrap;
 }
 
+/* Bloc de droite (login / avatar) */
 .header-right {
-    flex: 0 0 auto;
-    margin-left: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
 }
 
-/* Bouton de connexion */
+/* ========================
+   Menu de profil (avatar + dropdown)
+======================== */
+
+.profile-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.profile-trigger {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-pic {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+/* Le menu est caché par défaut */
+.profile-dropdown {
+    position: absolute;
+    top: 52px;
+    right: 0;
+    min-width: 150px;
+
+    background: rgba(255,255,255,0.98);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    border: 1px solid rgba(0,0,0,0.06);
+
+    padding: 0.4rem 0;
+    display: none;
+    z-index: 40;
+}
+
+/* montré uniquement quand la classe .open est ajoutée par le JS */
+.profile-dropdown.open {
+    display: block;
+}
+
+.profile-dropdown a {
+    display: block;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.9rem;
+    color: #444;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.profile-dropdown a:hover {
+    background: rgba(245,169,184,0.12);
+    color: #e56c9b;
+}
+
+/* Bouton de connexion (quand pas connecté) */
 .login-btn {
     display: inline-flex;
     align-items: center;
@@ -111,7 +175,6 @@ header {
     box-shadow: 0 4px 10px rgba(0,0,0,0.12);
     transform: translateY(-1px);
 }
-
 
 /* NAVIGATION */
 .main-nav {
@@ -170,7 +233,7 @@ header {
     color: #555;
     box-shadow: 0 4px 14px rgba(0,0,0,0.16);
 
-    /* 🔥 caché par défaut, montré par la classe .header-compact */
+    /* caché par défaut, montré par la classe .header-compact */
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;

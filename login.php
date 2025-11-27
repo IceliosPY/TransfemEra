@@ -19,16 +19,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        // Recherche de l'utilisateur en base
-        $stmt = $pdo->prepare("SELECT id, email, password_hash FROM users WHERE email = :email");
+        // On récupère aussi avatar_path (et avatar_shape si tu veux)
+        $stmt = $pdo->prepare("
+            SELECT id, email, password_hash, avatar_path
+            FROM users
+            WHERE email = :email
+        ");
         $stmt->execute(['email' => $email]);
-        $user = $stmt->fetch();
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$user) {
-            // aucun compte avec cet email
+            // Aucun compte avec cet email
             $errors[] = "Adresse email ou mot de passe incorrect.";
         } else {
-            // vérification du mot de passe
+            // Vérification du mot de passe
             if (!password_verify($password, $user['password_hash'])) {
                 $errors[] = "Adresse email ou mot de passe incorrect.";
             } else {
@@ -36,7 +40,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_id']    = $user['id'];
                 $_SESSION['user_email'] = $user['email'];
 
-                // Redirection vers la page d'accueil (ou autre)
+                // Avatar : pris en BDD, sinon image par défaut
+                // (chemin relatif, ex: 'upload/avatar/mon_avatar.png')
+                if (!empty($user['avatar_path'])) {
+                    $_SESSION['avatar_path'] = $user['avatar_path'];
+                } else {
+                    $_SESSION['avatar_path'] = 'IMG/profile_default.png';
+                }
+
+                // Si plus tard tu ajoutes une colonne avatar_shape, tu peux faire :
+                // $_SESSION['avatar_shape'] = $user['avatar_shape'] ?: 'circle';
+
+                // Redirection vers la page d'accueil
                 header('Location: index.php');
                 exit;
             }
@@ -88,8 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="submit" class="login-btn">Connexion</button>
         </form>
 
+        <!-- Si tu as supprimé register.php, on change le texte : -->
         <p class="signup-text">
-            Pas encore de compte ? <a href="register.php">Créer un compte</a>
+            Pas encore de compte ? Contacte l’administratrice du site 💖
         </p>
     </div>
 
