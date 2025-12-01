@@ -6,12 +6,13 @@ require_once __DIR__ . '/config.php';
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email    = trim($_POST['email'] ?? '');
+
+    $pseudo   = trim($_POST['pseudo'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    // Validation rapide
-    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "Merci d'indiquer une adresse email valide.";
+    // Validation
+    if ($pseudo === '') {
+        $errors[] = "Merci d'indiquer ton pseudo.";
     }
 
     if ($password === '') {
@@ -19,40 +20,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        // On récupère aussi avatar_path (et avatar_shape si tu veux)
+
+        // On récupère l'utilisateur par son pseudo
         $stmt = $pdo->prepare("
-            SELECT id, email, password_hash, avatar_path
+            SELECT id, pseudo, password_hash, avatar_path, role
             FROM users
-            WHERE email = :email
+            WHERE pseudo = :pseudo
         ");
-        $stmt->execute(['email' => $email]);
+        $stmt->execute(['pseudo' => $pseudo]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$user) {
-            // Aucun compte avec cet email
-            $errors[] = "Adresse email ou mot de passe incorrect.";
+            $errors[] = "Pseudo ou mot de passe incorrect.";
         } else {
-            // Vérification du mot de passe
             if (!password_verify($password, $user['password_hash'])) {
-                $errors[] = "Adresse email ou mot de passe incorrect.";
+                $errors[] = "Pseudo ou mot de passe incorrect.";
             } else {
-                // ✅ Connexion OK -> on crée la session
+
+                // Connexion OK
                 $_SESSION['user_id']    = $user['id'];
-                $_SESSION['user_email'] = $user['email'];
+                $_SESSION['user_pseudo'] = $user['pseudo'];
+                $_SESSION['role']        = $user['role'];
 
-                // Avatar : pris en BDD, sinon image par défaut
-                // (chemin relatif, ex: 'upload/avatar/mon_avatar.png')
-                if (!empty($user['avatar_path'])) {
-                    $_SESSION['avatar_path'] = $user['avatar_path'];
-                } else {
-                    $_SESSION['avatar_path'] = 'IMG/profile_default.png';
-                }
+                // Avatar (BDD ou défaut)
+                $_SESSION['avatar_path'] = !empty($user['avatar_path'])
+                    ? $user['avatar_path']
+                    : 'IMG/profile_default.png';
 
-                // Si plus tard tu ajoutes une colonne avatar_shape, tu peux faire :
-                // $_SESSION['avatar_shape'] = $user['avatar_shape'] ?: 'circle';
-
-                // Redirection vers la page d'accueil
-                header('Location: index.php');
+                // Redirection vers la page intermédiaire
+                header("Location: index.php");
                 exit;
             }
         }
@@ -67,47 +63,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Se connecter — Transfem Era</title>
 
     <link rel="stylesheet" href="CSS/login.css">
+
+    <style>
+        body {
+            background: transparent !important;
+        }
+
+        #vanta-bg {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 5;
+        }
+    </style>
 </head>
 <body>
 
-    <div class="login-container">
-        <h2>Se connecter</h2>
+<div id="vanta-bg"></div>
 
-        <?php if (!empty($errors)): ?>
-            <div style="margin-bottom:1rem; padding:0.8rem; border-radius:8px;
-                        background:#ffe6ea; color:#b00020; font-size:0.9rem;">
-                <?php foreach ($errors as $err): ?>
-                    <div><?= htmlspecialchars($err) ?></div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
+<div class="login-container">
+    <h2>Se connecter</h2>
 
-        <form action="" method="POST" class="login-form">
-            <label for="email">Adresse email</label>
-            <input
-                type="email"
-                id="email"
-                name="email"
-                required
-                value="<?= isset($email) ? htmlspecialchars($email) : '' ?>"
-            >
+    <?php if (!empty($errors)): ?>
+        <div style="margin-bottom:1rem; padding:0.8rem; border-radius:8px;
+                    background:#ffe6ea; color:#b00020; font-size:0.9rem;">
+            <?php foreach ($errors as $err): ?>
+                <div><?= htmlspecialchars($err) ?></div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 
-            <label for="password">Mot de passe</label>
-            <input
-                type="password"
-                id="password"
-                name="password"
-                required
-            >
+    <form action="" method="POST" class="login-form">
+        <label for="pseudo">Pseudo</label>
+        <input
+            type="text"
+            id="pseudo"
+            name="pseudo"
+            required
+            value="<?= isset($pseudo) ? htmlspecialchars($pseudo) : '' ?>"
+        >
 
-            <button type="submit" class="login-btn">Connexion</button>
-        </form>
+        <label for="password">Mot de passe</label>
+        <input
+            type="password"
+            id="password"
+            name="password"
+            required
+        >
 
-        <!-- Si tu as supprimé register.php, on change le texte : -->
-        <p class="signup-text">
-            Pas encore de compte ? Contacte l’administratrice du site 💖
-        </p>
-    </div>
+        <button type="submit" class="login-btn">Connexion</button>
+    </form>
+
+    <p class="signup-text">
+        Pas encore de compte ? Contacte l’administratrice du site 💖
+    </p>
+</div>
+
+<!-- VANTA -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+<script src="SCRIPTS/vanta.js"></script>
 
 </body>
 </html>
