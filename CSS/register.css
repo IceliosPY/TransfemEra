@@ -1,0 +1,222 @@
+/* Fond Vanta derrière tout */
+#vanta-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+}
+
+/* Page */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: transparent;
+}
+
+/* Centre la carte verticalement et horizontalement */
+.register-page {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1.5rem;
+}
+
+/* Carte principale */
+.register-card {
+    width: min(820px, 100%);
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 22px;
+    padding: 1.8rem 2.2rem 1.9rem;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.10);
+    backdrop-filter: blur(16px);
+}
+
+/* Titre */
+.register-card h2 {
+    margin: 0 0 1.4rem 0;
+    text-align: center;
+    font-size: 1.8rem;
+    background: linear-gradient(90deg, #5bcffb, #f5a9b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Alerts */
+.alert-box {
+    padding: 0.8rem 0.9rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.alert-error {
+    background: #ffe6ea;
+    color: #b00020;
+}
+
+.alert-success {
+    background: #e6fff3;
+    color: #146c43;
+}
+
+/* Formulaire en grille compacte */
+.register-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1.1rem;
+    row-gap: 0.9rem;
+}
+
+/* Chaque champ */
+.field {
+    display: flex;
+    flex-direction: column;
+}
+
+.field.full {
+    grid-column: 1 / -1;
+}
+
+/* Labels + inputs */
+.register-form label {
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 0.2rem;
+}
+
+.register-form input[type="text"],
+.register-form input[type="email"],
+.register-form input[type="password"],
+.register-form input[type="date"] {
+    padding: 0.5rem 0.7rem;
+    border-radius: 12px;
+    border: 1px solid #dde0e5;
+    font-size: 0.9rem;
+    outline: none;
+    background: #ffffff;
+}
+
+.register-form input:focus {
+    border-color: #e56c9b;
+}
+
+/* Case à cocher règlement */
+.rules-box {
+    margin-top: 0.4rem;
+}
+
+.rules-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    color: #555;
+}
+
+.rules-label input[type="checkbox"] {
+    margin-top: 0.15rem;
+}
+
+/* Bouton principal */
+.register-btn {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(90deg, #5bcffb, #f5a9b8);
+    color: #ffffff;
+    font-size: 1rem;
+    margin-top: 0.2rem;
+}
+
+.register-btn:hover {
+    opacity: 0.92;
+}
+
+/* Lien de bas de carte */
+.signup-text {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.86rem;
+    color: #444;
+}
+
+.signup-text a {
+    color: #e56c9b;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.signup-text a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive : en-dessous de 720px, on repasse en 1 colonne */
+@media (max-width: 720px) {
+    .register-card {
+        padding: 1.4rem 1.3rem 1.6rem;
+    }
+
+    .register-form {
+        grid-template-columns: 1fr;
+    }
+
+    .field.full {
+        grid-column: 1 / 2;
+    }
+}
+/* Container */
+.avatar-upload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* Zone cliquable */
+.avatar-wrapper {
+    position: relative;
+    width: 110px;
+    height: 110px;
+    cursor: pointer;
+}
+
+/* Image */
+.avatar-wrapper img {
+    width: 110px;
+    height: 110px;
+    object-fit: cover;
+    border-radius: 50%;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.18);
+    transition: 0.25s ease;
+}
+
+/* Effet hover */
+.avatar-wrapper:hover img {
+    filter: brightness(0.5) blur(1px);
+}
+
+/* Layer affiché au survol */
+.avatar-hover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.4);
+    opacity: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: 0.25s ease;
+}
+
+.avatar-wrapper:hover .avatar-hover {
+    opacity: 1;
+}

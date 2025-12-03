@@ -121,8 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </form>
 
     <p class="signup-text">
-        Pas encore de compte ? Contacte l’administratrice du site 💖
-    </p>
+            Pas encore de compte ? <a href="register.php">Créer un compte</a>
+        </p>
 </div>
 
 <!-- VANTA -->
