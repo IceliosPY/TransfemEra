@@ -1,6 +1,6 @@
-# ⭐ Site de l’Association Transfem — README
+# ⭐ Transfem — README
 
-Bienvenue sur le dépôt du **site officiel de l’Association Transfem**.  
+Bienvenue sur le dépôt du **site officiel de l’Association TransfemERA**.  
 Ce projet a pour objectif de fournir une plateforme accessible, inclusive et sécurisée destinée à soutenir, informer et rassembler les femmes trans et les personnes transféminines.
 
 ---
