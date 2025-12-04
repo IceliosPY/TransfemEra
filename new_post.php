@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt->execute([
                 'title'     => $title,
-                'content'   => $content,                 // Markdown brut
+                'content'   => $content, // Markdown brut
                 'tag'       => $tag !== '' ? $tag : null,
                 'is_nsfw'   => $is_nsfw,
                 'is_pinned' => $is_pinned,
@@ -71,11 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // --- Upload des images éventuelles ---
             if (!empty($_FILES['images']) && is_array($_FILES['images']['name'])) {
-                $allowed   = ['image/jpeg', 'image/png', 'image/webp'];
-                $uploadDir = __DIR__ . '/uploads/posts/';
+                $allowedImageMimes = ['image/jpeg', 'image/png', 'image/webp'];
+                $uploadDirImages   = __DIR__ . '/uploads/posts/';
 
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0777, true);
+                if (!is_dir($uploadDirImages)) {
+                    mkdir($uploadDirImages, 0777, true);
                 }
 
                 $insertImg = $pdo->prepare("
@@ -97,14 +97,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $tmpName = $_FILES['images']['tmp_name'][$index];
 
                     $mime = mime_content_type($tmpName);
-                    if (!in_array($mime, $allowed, true)) {
+                    if (!in_array($mime, $allowedImageMimes, true)) {
                         $errors[] = "Une image a un format non accepté (JPG, PNG ou WebP uniquement).";
                         continue;
                     }
 
                     $extension = pathinfo($name, PATHINFO_EXTENSION);
-                    $filename  = 'post_' . $postId . '_' . time() . '_' . $index . '.' . $extension;
-                    $destPath  = $uploadDir . $filename;
+                    $safeExt   = $extension ?: 'bin';
+                    $filename  = 'post_' . $postId . '_' . time() . '_' . $index . '.' . $safeExt;
+                    $destPath  = $uploadDirImages . $filename;
 
                     if (!move_uploaded_file($tmpName, $destPath)) {
                         $errors[] = "Impossible d'enregistrer une des images.";
@@ -120,6 +121,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            // --- Upload des fichiers joints éventuels (PDF, docs, etc.) ---
+            if (!empty($_FILES['files']) && is_array($_FILES['files']['name'])) {
+
+                $uploadDirFiles = __DIR__ . '/uploads/post_files/';
+
+                if (!is_dir($uploadDirFiles)) {
+                    mkdir($uploadDirFiles, 0777, true);
+                }
+
+                $insertFile = $pdo->prepare("
+                    INSERT INTO post_files (post_id, file_path, original_name, mime_type)
+                    VALUES (:post_id, :file_path, :original_name, :mime_type)
+                ");
+
+                foreach ($_FILES['files']['name'] as $index => $name) {
+
+                    if ($_FILES['files']['error'][$index] === UPLOAD_ERR_NO_FILE) {
+                        continue;
+                    }
+
+                    if ($_FILES['files']['error'][$index] !== UPLOAD_ERR_OK) {
+                        $errors[] = "Un des fichiers n'a pas pu être envoyé correctement.";
+                        continue;
+                    }
+
+                    $tmpName = $_FILES['files']['tmp_name'][$index];
+
+                    // On accepte "tous" les types, mais on enregistre le mime type
+                    $mime = mime_content_type($tmpName) ?: 'application/octet-stream';
+
+                    $extension   = pathinfo($name, PATHINFO_EXTENSION);
+                    $safeExt     = $extension ?: 'bin';
+                    $safeBase    = pathinfo($name, PATHINFO_FILENAME);
+                    // on nettoie un peu le nom de base
+                    $safeBase    = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $safeBase);
+                    $filename    = 'file_' . $postId . '_' . time() . '_' . $index . '_' . $safeBase . '.' . $safeExt;
+                    $destPath    = $uploadDirFiles . $filename;
+
+                    if (!move_uploaded_file($tmpName, $destPath)) {
+                        $errors[] = "Impossible d'enregistrer un des fichiers.";
+                        continue;
+                    }
+
+                    $relativePath = 'uploads/post_files/' . $filename;
+
+                    $insertFile->execute([
+                        'post_id'       => $postId,
+                        'file_path'     => $relativePath,
+                        'original_name' => $name,
+                        'mime_type'     => $mime,
+                    ]);
+                }
+            }
+
             $pdo->commit();
             $success = true;
 
@@ -129,6 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (PDOException $e) {
             $pdo->rollBack();
             $errors[] = "Erreur lors de la création du post. Réessaie plus tard.";
+            // En prod : log de l'erreur $e->getMessage()
         }
     }
 }
@@ -260,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             flex-direction: column;
             gap: 0.7rem;
-            max-height: 420px;
+            max-height: 520px;
             overflow: hidden;
         }
 
@@ -304,7 +360,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-decoration: line-through;
         }
 
-        .image-upload-block label {
+        .image-upload-block label,
+        .file-upload-block label {
             display: block;
             font-size: 0.85rem;
             font-weight: 500;
@@ -312,7 +369,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 0.2rem;
         }
 
-        .image-upload-block input[type="file"] {
+        .image-upload-block input[type="file"],
+        .file-upload-block input[type="file"] {
             width: 100%;
             font-size: 0.8rem;
             margin-top: 0.25rem;
@@ -352,7 +410,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-self: center;
         }
 
-        .add-image-btn {
+        .add-image-btn,
+        .add-file-btn {
             margin-top: 0.4rem;
             border-radius: 999px;
             border: 1px solid #e5e7eb;
@@ -362,7 +421,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             cursor: pointer;
         }
 
-        .add-image-btn:hover {
+        .add-image-btn:hover,
+        .add-file-btn:hover {
             background: #eef2ff;
             border-color: #c7d2fe;
         }
@@ -527,6 +587,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         Tu peux ajouter plusieurs images, elles seront affichées sous ton post (galerie).
                     </div>
                 </div>
+
+                <div class="file-upload-block">
+                    <label for="files">Fichiers joints (PDF, docs, etc.)</label>
+
+                    <div id="file-inputs">
+                        <input type="file" name="files[]">
+                    </div>
+
+                    <button type="button" id="add-file-input" class="add-file-btn">
+                        + Ajouter un autre fichier
+                    </button>
+
+                    <div class="preview-hint">
+                        Ces fichiers seront listés séparément de la galerie d’images (ex. PDFs, documents).
+                    </div>
+                </div>
             </div>
         </form>
 
@@ -539,17 +615,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <script>
         // Ajout dynamique de champs fichier pour les images
         document.addEventListener('DOMContentLoaded', function () {
-            const container = document.getElementById('image-inputs');
-            const addBtn    = document.getElementById('add-image-input');
-            if (!container || !addBtn) return;
+            const imgContainer = document.getElementById('image-inputs');
+            const addImgBtn    = document.getElementById('add-image-input');
+            if (imgContainer && addImgBtn) {
+                addImgBtn.addEventListener('click', function () {
+                    const input = document.createElement('input');
+                    input.type  = 'file';
+                    input.name  = 'images[]';
+                    input.accept = 'image/png, image/jpeg, image/webp';
+                    imgContainer.appendChild(input);
+                });
+            }
 
-            addBtn.addEventListener('click', function () {
-                const input = document.createElement('input');
-                input.type  = 'file';
-                input.name  = 'images[]';
-                input.accept = 'image/png, image/jpeg, image/webp';
-                container.appendChild(input);
-            });
+            // Ajout dynamique de champs fichier pour les fichiers joints
+            const fileContainer = document.getElementById('file-inputs');
+            const addFileBtn    = document.getElementById('add-file-input');
+            if (fileContainer && addFileBtn) {
+                addFileBtn.addEventListener('click', function () {
+                    const input = document.createElement('input');
+                    input.type  = 'file';
+                    input.name  = 'files[]';
+                    fileContainer.appendChild(input);
+                });
+            }
         });
         </script>
 

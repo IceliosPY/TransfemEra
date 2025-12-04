@@ -1,5 +1,5 @@
 <?php
-// post.php : afficher un post + images + commentaires + votes
+// post.php : afficher un post + images + fichiers + commentaires + votes
 session_start();
 require_once __DIR__ . '/config.php';
 
@@ -30,17 +30,22 @@ $postId = (int)$_GET['id'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    // 1) Ajout d'un commentaire
+    // 1) Ajout d'un commentaire (ou d'une réponse)
     if ($action === 'add_comment') {
         $commentContent = trim($_POST['comment_content'] ?? '');
+        $parentId = null;
+        if (!empty($_POST['parent_id']) && ctype_digit($_POST['parent_id'])) {
+            $parentId = (int)$_POST['parent_id'];
+        }
 
         if ($commentContent !== '') {
             $stmtC = $pdo->prepare("
-                INSERT INTO comments (post_id, author_id, content)
-                VALUES (:post_id, :author_id, :content)
+                INSERT INTO comments (post_id, parent_comment_id, author_id, content)
+                VALUES (:post_id, :parent_id, :author_id, :content)
             ");
             $stmtC->execute([
                 'post_id'    => $postId,
+                'parent_id'  => $parentId,
                 'author_id'  => $currentUserId,
                 'content'    => $commentContent,
             ]);
@@ -70,7 +75,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $existing = $stmtCheck->fetchColumn();
 
             if ($existing === false) {
-                // premier vote
                 $stmtIns = $pdo->prepare("
                     INSERT INTO comment_votes (comment_id, user_id, vote)
                     VALUES (:cid, :uid, :vote)
@@ -84,7 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $existing = (int)$existing;
 
                 if ($existing === $voteValue) {
-                    // même vote -> on annule (toggle)
                     $stmtDel = $pdo->prepare("
                         DELETE FROM comment_votes
                         WHERE comment_id = :cid AND user_id = :uid
@@ -94,7 +97,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'uid' => $currentUserId,
                     ]);
                 } else {
-                    // vote inverse -> on met à jour
                     $stmtUpd = $pdo->prepare("
                         UPDATE comment_votes
                         SET vote = :vote
@@ -144,7 +146,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $existing = (int)$existing;
 
                 if ($existing === $voteValue) {
-                    // même vote -> on le retire
                     $stmtDel = $pdo->prepare("
                         DELETE FROM post_votes
                         WHERE post_id = :pid AND user_id = :uid
@@ -154,7 +155,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'uid' => $currentUserId,
                     ]);
                 } else {
-                    // inversion
                     $stmtUpd = $pdo->prepare("
                         UPDATE post_votes
                         SET vote = :vote
@@ -170,6 +170,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         header('Location: post.php?id=' . $postId);
+        exit;
+    }
+
+    // 4) Suppression d'un commentaire (admin OU autrice du commentaire)
+    if ($action === 'delete_comment') {
+        $commentId = isset($_POST['comment_id']) && ctype_digit($_POST['comment_id'])
+            ? (int)$_POST['comment_id'] : 0;
+
+        if ($commentId > 0) {
+            // Récupérer l'autrice du commentaire
+            $stmt = $pdo->prepare("
+                SELECT author_id 
+                FROM comments 
+                WHERE id = :cid AND post_id = :pid
+            ");
+            $stmt->execute([
+                'cid' => $commentId,
+                'pid' => $postId,
+            ]);
+            $comment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($comment && (
+                $currentRole === 'admin' ||
+                (int)$comment['author_id'] === $currentUserId
+            )) {
+                // Les clés étrangères (comment_votes, parent_comment_id) devraient être en cascade.
+                $del = $pdo->prepare("DELETE FROM comments WHERE id = :cid");
+                $del->execute(['cid' => $commentId]);
+            }
+        }
+
+        header('Location: post.php?id=' . $postId . '#comments');
         exit;
     }
 }
@@ -217,11 +249,21 @@ $imgStmt = $pdo->prepare("
 $imgStmt->execute(['id' => $postId]);
 $images = $imgStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Commentaires + votes
+// Fichiers joints du post
+$fileStmt = $pdo->prepare("
+    SELECT id, file_path, original_name, mime_type
+    FROM post_files
+    WHERE post_id = :id
+");
+$fileStmt->execute(['id' => $postId]);
+$files = $fileStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Commentaires + votes (avec parent_comment_id)
 $stmtComments = $pdo->prepare("
     SELECT 
         c.id,
         c.post_id,
+        c.parent_comment_id,
         c.author_id,
         c.content,
         c.created_at,
@@ -238,14 +280,21 @@ $stmtComments = $pdo->prepare("
     JOIN users u ON u.id = c.author_id
     LEFT JOIN comment_votes cv ON cv.comment_id = c.id
     WHERE c.post_id = :post_id
-    GROUP BY c.id, c.post_id, c.author_id, c.content, c.created_at, u.pseudo
+    GROUP BY c.id, c.post_id, c.parent_comment_id, c.author_id, c.content, c.created_at, u.pseudo
     ORDER BY c.created_at ASC
 ");
 $stmtComments->execute([
     'uid'     => $currentUserId,
     'post_id' => $postId,
 ]);
-$comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
+$allComments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
+
+// Organiser les commentaires par parent (fil simple : parent -> réponses)
+$commentsByParent = [];
+foreach ($allComments as $c) {
+    $parent = $c['parent_comment_id'] ?? null;
+    $commentsByParent[$parent][] = $c;
+}
 
 /**
  * Mini rendu Markdown + tags custom
@@ -331,7 +380,7 @@ function renderMarkdown(string $md): string {
         .post-header-block {
             position: relative;
             margin-bottom: 1.2rem;
-            padding-right: 130px; /* laisse de la place aux votes à droite */
+            padding-right: 130px;
         }
 
         .post-title {
@@ -360,7 +409,6 @@ function renderMarkdown(string $md): string {
         .tag-nsfw { border-color:#fecaca; background:#fef2f2; color:#b91c1c; }
         .tag-pinned { border-color:#fcd34d; background:#fffbeb; color:#92400e; }
 
-        /* Votes sur le post, en haut à droite */
         .post-votes-container {
             position: absolute;
             top: 0;
@@ -456,6 +504,38 @@ function renderMarkdown(string $md): string {
             max-height: 260px;
         }
 
+        /* Fichiers joints */
+        .post-files-block {
+            margin-top: 1.4rem;
+            margin-bottom: 1.2rem;
+        }
+        .post-files-block h2 {
+            font-size: 1rem;
+            margin-bottom: 0.4rem;
+            color: #0f172a;
+        }
+        .post-files-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        .post-files-list li {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        .post-files-list a {
+            text-decoration: none;
+            color: #2563eb;
+        }
+        .post-files-list a:hover {
+            text-decoration: underline;
+        }
+        .post-files-list .file-meta {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-left: 0.4rem;
+        }
+
         .delete-btn {
             background: #fee2e2;
             border: 1px solid #fca5a5;
@@ -491,6 +571,10 @@ function renderMarkdown(string $md): string {
             margin-bottom: 0.6rem;
             background: #f9fafb;
         }
+        .comment-reply {
+            margin-left: 2.0rem;
+            margin-top: 0.4rem;
+        }
         .comment-meta {
             font-size: 0.78rem;
             color: #6b7280;
@@ -520,7 +604,32 @@ function renderMarkdown(string $md): string {
             color: #6b7280;
         }
 
-        .new-comment-form textarea {
+        .comment-actions {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+        .comment-actions button,
+        .comment-actions .link-btn {
+            border-radius: 999px;
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            padding: 0.15rem 0.65rem;
+            font-size: 0.78rem;
+            cursor: pointer;
+        }
+        .comment-actions .link-btn {
+            text-decoration: none;
+            color: #4b5563;
+        }
+        .comment-actions button:hover,
+        .comment-actions .link-btn:hover {
+            background: #f3f4f6;
+        }
+
+        .new-comment-form textarea,
+        .reply-form textarea {
             width: 100%;
             border-radius: 10px;
             border: 1px solid #e5e7eb;
@@ -529,7 +638,8 @@ function renderMarkdown(string $md): string {
             resize: vertical;
             min-height: 90px;
         }
-        .new-comment-form button {
+        .new-comment-form button,
+        .reply-form button {
             margin-top: 0.4rem;
             border-radius: 999px;
             border: 1px solid rgba(191,219,254,1);
@@ -538,8 +648,13 @@ function renderMarkdown(string $md): string {
             padding: 0.35rem 0.9rem;
             cursor: pointer;
         }
-        .new-comment-form button:hover {
+        .new-comment-form button:hover,
+        .reply-form button:hover {
             background: #dbeafe;
+        }
+
+        .reply-form {
+            margin-top: 0.4rem;
         }
     </style>
 </head>
@@ -552,11 +667,15 @@ function renderMarkdown(string $md): string {
             <h1>Transfem Era</h1>
         </div>
         <nav class="main-nav">
-            <a href="index.php#accueil">Accueil</a>
-            <a href="index.php#valeurs">Nos valeurs</a>
-            <a href="index.php#contact">Nous contacter</a>
-            <a href="posts.php" class="active">Posts</a>
-        </nav>
+    <a href="index.php#accueil">Accueil</a>
+    <?php if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['membre', 'admin'], true)): ?>
+    <a href="posts.php">Posts</a>
+    <?php endif; ?>
+
+    <?php if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['membre', 'admin'], true)): ?>
+        <a href="tdor.php">TDoR</a>
+    <?php endif; ?>
+</nav>
         <div class="header-right">
             <?php if (isset($_SESSION['user_id'])): ?>
                 <div class="profile-menu">
@@ -630,7 +749,7 @@ function renderMarkdown(string $md): string {
                 <?php endif; ?>
             </div>
 
-            <?php if ($currentRole === 'admin'): ?>
+            <?php if ($currentRole === 'admin' || $currentUserId === (int)$post['author_id']): ?>
                 <div style="margin-top:0.8rem;">
                     <form action="delete_post.php" method="POST"
                           onsubmit="return confirm('Voulez-vous vraiment supprimer ce post ? Cette action est irréversible.');">
@@ -641,7 +760,7 @@ function renderMarkdown(string $md): string {
             <?php endif; ?>
         </div>
 
-        <!-- Contenu + galerie + commentaires -->
+        <!-- Contenu + galerie + fichiers + commentaires -->
         <div class="post-body-block">
             <div class="post-content">
                 <?= renderMarkdown($post['content']); ?>
@@ -656,60 +775,126 @@ function renderMarkdown(string $md): string {
                 </div>
             <?php endif; ?>
 
+            <?php if (!empty($files)): ?>
+                <div class="post-files-block">
+                    <h2>Fichiers joints</h2>
+                    <ul class="post-files-list">
+                        <?php foreach ($files as $f): ?>
+                            <li>
+                                📎
+                                <a href="<?= htmlspecialchars($f['file_path']) ?>" target="_blank" rel="noopener noreferrer">
+                                    <?= htmlspecialchars($f['original_name']) ?>
+                                </a>
+                                <?php if (!empty($f['mime_type'])): ?>
+                                    <span class="file-meta">
+                                        (<?= htmlspecialchars($f['mime_type']) ?>)
+                                    </span>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
             <!-- Commentaires -->
             <div class="comments-block" id="comments">
                 <h2>Commentaires</h2>
 
-                <?php if (empty($comments)): ?>
+                <?php if (empty($commentsByParent[null] ?? [])): ?>
                     <p style="font-size:0.85rem;color:#6b7280;">
                         Aucun commentaire pour le moment. Sois la première à réagir 💬
                     </p>
                 <?php else: ?>
-                    <?php foreach ($comments as $c): ?>
-                        <article class="comment-item">
+                    <?php
+                    // Fonction d'affichage récursive (un seul niveau de fil dans la pratique)
+                    function renderCommentThread(array $comment, array $commentsByParent, string $currentRole, int $currentUserId) {
+                        $id = (int)$comment['id'];
+                        ?>
+                        <article class="comment-item" id="comment-<?= $id ?>">
                             <div class="comment-meta">
                                 <span>
-                                    <strong><?= htmlspecialchars($c['author_pseudo']) ?></strong>
-                                    — <?= date('d/m/Y à H:i', strtotime($c['created_at'])) ?>
+                                    <strong><?= htmlspecialchars($comment['author_pseudo']) ?></strong>
+                                    — <?= date('d/m/Y à H:i', strtotime($comment['created_at'])) ?>
                                 </span>
 
-                                <div class="comment-votes">
-                                    <form method="POST">
-                                        <input type="hidden" name="action" value="vote">
-                                        <input type="hidden" name="comment_id" value="<?= (int)$c['id'] ?>">
-                                        <input type="hidden" name="direction" value="up">
-                                        <button type="submit"
-                                                class="vote-btn <?= (int)$c['my_vote'] === 1 ? 'active-up' : '' ?>">
-                                            ▲
-                                        </button>
-                                    </form>
+                                <div class="comment-actions">
+                                    <div class="comment-votes">
+                                        <form method="POST">
+                                            <input type="hidden" name="action" value="vote">
+                                            <input type="hidden" name="comment_id" value="<?= $id ?>">
+                                            <input type="hidden" name="direction" value="up">
+                                            <button type="submit"
+                                                    class="vote-btn <?= (int)$comment['my_vote'] === 1 ? 'active-up' : '' ?>">
+                                                ▲
+                                            </button>
+                                        </form>
 
-                                    <form method="POST">
-                                        <input type="hidden" name="action" value="vote">
-                                        <input type="hidden" name="comment_id" value="<?= (int)$c['id'] ?>">
-                                        <input type="hidden" name="direction" value="down">
-                                        <button type="submit"
-                                                class="vote-btn <?= (int)$c['my_vote'] === -1 ? 'active-down' : '' ?>">
-                                            ▼
-                                        </button>
-                                    </form>
+                                        <form method="POST">
+                                            <input type="hidden" name="action" value="vote">
+                                            <input type="hidden" name="comment_id" value="<?= $id ?>">
+                                            <input type="hidden" name="direction" value="down">
+                                            <button type="submit"
+                                                    class="vote-btn <?= (int)$comment['my_vote'] === -1 ? 'active-down' : '' ?>">
+                                                ▼
+                                            </button>
+                                        </form>
 
-                                    <?php if ($currentRole === 'admin'): ?>
-                                        <span class="comment-counts-admin">
-                                            (<?= (int)$c['upvotes'] ?> ▲ / <?= (int)$c['downvotes'] ?> ▼)
-                                        </span>
+                                        <?php if ($currentRole === 'admin'): ?>
+                                            <span class="comment-counts-admin">
+                                                (<?= (int)$comment['upvotes'] ?> ▲ / <?= (int)$comment['downvotes'] ?> ▼)
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <button type="button"
+                                            class="link-btn"
+                                            data-reply-target="reply-to-<?= $id ?>">
+                                        Répondre
+                                    </button>
+
+                                    <?php if ($currentRole === 'admin' || (int)$comment['author_id'] === $currentUserId): ?>
+                                        <form method="POST" onsubmit="return confirm('Supprimer ce commentaire et ses réponses ?');">
+                                            <input type="hidden" name="action" value="delete_comment">
+                                            <input type="hidden" name="comment_id" value="<?= $id ?>">
+                                            <button type="submit">Supprimer</button>
+                                        </form>
                                     <?php endif; ?>
                                 </div>
                             </div>
 
                             <div class="comment-content">
-                                <?= renderMarkdown($c['content']); ?>
+                                <?= renderMarkdown($comment['content']); ?>
                             </div>
+
+                            <!-- Formulaire de réponse caché -->
+                            <div class="reply-form" id="reply-to-<?= $id ?>" style="display:none;">
+                                <form method="POST">
+                                    <input type="hidden" name="action" value="add_comment">
+                                    <input type="hidden" name="parent_id" value="<?= $id ?>">
+                                    <textarea name="comment_content"
+                                              placeholder="Ta réponse (Markdown léger accepté)…"></textarea>
+                                    <button type="submit">Publier la réponse</button>
+                                </form>
+                            </div>
+
+                            <?php if (!empty($commentsByParent[$id] ?? [])): ?>
+                                <?php foreach ($commentsByParent[$id] as $reply): ?>
+                                    <div class="comment-reply">
+                                        <?php renderCommentThread($reply, $commentsByParent, $currentRole, $currentUserId); ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </article>
+                        <?php
+                    }
+                    ?>
+
+                    <?php foreach ($commentsByParent[null] as $c): ?>
+                        <?php renderCommentThread($c, $commentsByParent, $currentRole, $currentUserId); ?>
                     <?php endforeach; ?>
                 <?php endif; ?>
 
-                <!-- Nouveau commentaire -->
+                <!-- Nouveau commentaire (top-level) -->
                 <div class="new-comment-form" style="margin-top:1rem;">
                     <form method="POST">
                         <input type="hidden" name="action" value="add_comment">
@@ -740,5 +925,19 @@ function renderMarkdown(string $md): string {
 <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
 <script src="SCRIPTS/vanta.js"></script>
 <script src="SCRIPTS/accederprofil.js"></script>
+
+<script>
+// Affichage / masquage des formulaires de réponse
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-reply-target]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-reply-target');
+            const form = document.getElementById(targetId);
+            if (!form) return;
+            form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
+        });
+    });
+});
+</script>
 </body>
 </html>

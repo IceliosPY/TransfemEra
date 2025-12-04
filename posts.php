@@ -481,11 +481,15 @@ function snippet_md(string $text, int $max = 180): string {
         </div>
 
         <nav class="main-nav">
-            <a href="index.php#accueil">Accueil</a>
-            <a href="index.php#valeurs">Nos valeurs</a>
-            <a href="index.php#contact">Nous contacter</a>
-            <a href="posts.php" class="active">Posts</a>
-        </nav>
+    <a href="index.php#accueil">Accueil</a>
+    <?php if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['membre', 'admin'], true)): ?>
+    <a href="posts.php">Posts</a>
+    <?php endif; ?>
+
+    <?php if (!empty($_SESSION['user_id']) && in_array($_SESSION['role'] ?? '', ['membre', 'admin'], true)): ?>
+        <a href="tdor.php">TDoR</a>
+    <?php endif; ?>
+</nav>
 
         <div class="header-right">
             <?php if (isset($_SESSION['user_id'])): ?>
