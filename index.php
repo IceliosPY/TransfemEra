@@ -26,9 +26,13 @@ session_start(); // important : doit être tout en haut
 
             <!-- Centre : navigation principale -->
             <nav class="main-nav">
-                <a href="#accueil">Accueil</a>
-                <a href="#valeurs">Nos valeurs</a>
-                <a href="#contact">Nous contacter</a>
+               <a href="#accueil">Accueil</a>
+               <a href="#valeurs">Nos valeurs</a>
+               <a href="#contact">Nous contacter</a>
+
+              <?php if (!empty($_SESSION['role']) && in_array($_SESSION['role'], ['membre','admin'], true)): ?>
+                <a href="posts.php">Posts</a>
+              <?php endif; ?>
             </nav>
 
             <!-- Droite : profil / connexion -->
