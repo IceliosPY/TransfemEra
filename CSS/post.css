@@ -1,0 +1,114 @@
+.post-page {
+    max-width: 980px;
+    margin: 110px auto 40px;
+    padding: 1.6rem 1.8rem 2rem;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.98);
+    box-shadow: 0 18px 45px rgba(15,23,42,0.20);
+    backdrop-filter: blur(10px);
+}
+
+/* Nouveaux blocs structurants */
+.post-header-block {
+    margin-bottom: 1.2rem;
+}
+
+.post-body-block {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;  /* démarcation claire avant le contenu utilisateur */
+}
+
+.post-footer-nav {
+    margin-top: 1.4rem;
+    padding-top: 0.8rem;
+    border-top: 1px dashed #e5e7eb; /* autre démarcation en bas */
+}
+
+/* Titre + méta */
+.post-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: .2rem;
+}
+.post-meta {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-bottom: .6rem;
+}
+
+/* Badges */
+.tag-pill {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    color: #4b5563;
+    margin-right: .25rem;
+}
+.tag-nsfw { border-color:#fecaca; background:#fef2f2; color:#b91c1c; }
+.tag-pinned { border-color:#fcd34d; background:#fffbeb; color:#92400e; }
+
+/* Contenu */
+.post-content {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #111827;
+    margin-bottom: 1.3rem;
+}
+.post-content h1,
+.post-content h2,
+.post-content h3 {
+    margin: 0.4rem 0 0.2rem;
+    font-weight: 600;
+}
+.post-content h1 { font-size: 1.4rem; }
+.post-content h2 { font-size: 1.2rem; }
+.post-content h3 { font-size: 1.05rem; }
+
+.post-content ul {
+    margin: 0.2rem 0 0.4rem 1.2rem;
+    padding-left: 0.8rem;
+    list-style: disc;
+}
+.post-content a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+/* Galerie */
+.post-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill,minmax(160px,1fr));
+    gap: .6rem;
+}
+.post-gallery img {
+    width: 100%;
+    border-radius: 14px;
+    object-fit: cover;
+    max-height: 260px;
+}
+
+/* Bouton suppression + lien retour */
+.delete-btn {
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+    padding: 0.45rem 1rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.delete-btn:hover {
+    background: #fecaca;
+}
+
+.back-link {
+    font-size: .85rem;
+    color: #6b7280;
+    text-decoration: none;
+}
+.back-link:hover { text-decoration:underline; color:#111827; }
